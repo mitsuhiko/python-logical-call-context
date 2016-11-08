@@ -131,7 +131,7 @@ class CallContext(object):
         self._data[name] = _ContextData(value, self.key, self.logical_key,
                                          sync=sync, local=local)
 
-    def unset_data(self, name):
+    def del_data(self, name):
         """Deletes a key"""
         self._data[name] = None
 

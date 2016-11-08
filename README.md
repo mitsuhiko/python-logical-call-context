@@ -4,7 +4,7 @@ A repository for experiments with logical call contexts in Python.
 The idea is that this stuff moves into contextlib which is why the
 examples assume it's there and the code monkeypatches on import.
 
-Examples::
+Examples:
 
 ```python
 from contextlib import get_call_context
@@ -29,6 +29,37 @@ def get_my_context(create=False):
     rv = new_call_context(parent=...)
     bind_the_new_context(rv)
     return rv
+```
+
+What you can do with the call context:
+
+```
+# Sets some data
+ctx.set_data('key', 'value')
+
+# Sets some data but mark it so that it cannot cross a thread
+# or something similar which would require external synchronization.
+ctx.set_data('key', 'value', sync=False)
+
+# Set some data so that it does not pass over to isolated contexts
+# (these contexts are created with `isolated_call_context` and set up
+# a new logical call context.
+ctx.set_data('werkzeug.request', ..., local=True)
+
+# Looks up stored data (or raise a LookupError)
+ctx.get_data('key')
+
+# Looks up stored data or return a default
+ctx.get_data('key', default=None)
+
+# Deletes some data
+ctx.del_data('key')
+
+# Return the current logical key (a hashable object)
+ctx.logical_key
+
+# Return the current concurrency key (a hashable object)
+ctx.key
 ```
 
 Other things patched:

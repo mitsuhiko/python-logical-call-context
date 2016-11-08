@@ -8,7 +8,7 @@ def test_basic_context():
     ctx = contextlib.get_call_context()
     ctx.set_data('foo', 42)
     assert ctx.get_data('foo') == 42
-    ctx.unset_data('foo')
+    ctx.del_data('foo')
 
     with pytest.raises(LookupError):
         ctx.get_data('foo')
