@@ -33,7 +33,7 @@ def get_my_context(create=False):
 
 What you can do with the call context:
 
-```
+```python
 # Sets some data
 ctx.set_data('key', 'value')
 
