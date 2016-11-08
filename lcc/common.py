@@ -185,7 +185,8 @@ def isolated_call_context(isolate=True):
 
 def patch_contextlib():
     """Injects us to where we expect to live."""
-    from .unified import get_call_context
-    contextlib.get_call_context = get_call_context
+    from . import unified
+    contextlib.get_call_context = unified.get_call_context
     contextlib.new_call_context = new_call_context
     contextlib.isolated_call_context = isolated_call_context
+    contextlib.register_context_provider = unified.register
