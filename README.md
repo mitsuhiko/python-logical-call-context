@@ -13,8 +13,8 @@ from contextlib import get_call_context
 ctx = get_call_context()
 
 # Isolate some calls
-from contextlib import isolate_call_context
-with isolate_call_context():
+from contextlib import isolated_call_context
+with isolated_call_context():
     ...
 
 # Register a new context provider
