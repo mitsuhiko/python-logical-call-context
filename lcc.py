@@ -148,30 +148,17 @@ class CallContext(object):
             self._backup = backup
 
 
-def new_call_context(name=None, parent=None, set=False):
+def new_call_context(name=None, parent=None):
     """Creates a new call context which optionally is created from a given
-    parent.  If `set` is set to ``True`` the call context will be set for
-    current context as if ``sys.set_call_context`` is called on the return
-    value.
+    parent.
     """
     if name is None:
         name = threading.current_thread().name
-    rv = CallContext(name, parent)
-    if set:
-        _set_call_context(rv)
-    return rv
-
-
-def _set_task_call_context(task, ctx):
-    try:
-        contexts = _local.asyncio_contexts
-    except AttributeError:
-        _local.asyncio_contexts = contexts = WeakKeyDictionary()
-    contexts[task] = ctx
-    return ctx
+    return CallContext(name, parent)
 
 
 def _get_call_context():
+    """Returns the current call context."""
     try:
         loop = asyncio.get_event_loop()
     except (AssertionError, RuntimeError):
@@ -191,18 +178,30 @@ def _get_call_context():
                 parent = _local.context
             except AttributeError:
                 parent = None
-            ctx = new_call_context(parent=parent, set=False)
-            return _set_task_call_context(task, ctx)
+            ctx = new_call_context(parent=parent)
+            return set_task_call_context(task, ctx)
 
     # Final fallback, make a new context and bind it to the thread.
     try:
         return _local.context
     except AttributeError:
-        return new_call_context(set=True)
+        return set_thread_call_context(new_call_context())
 
 
-def _set_call_context(ctx):
+def set_thread_call_context(ctx):
+    """Binds the given call context to the current thread."""
     _local.context = ctx
+    return ctx
+
+
+def set_task_call_context(task, ctx):
+    """Binds the given call context to the current asyncio task."""
+    try:
+        contexts = _local.asyncio_contexts
+    except AttributeError:
+        _local.asyncio_contexts = contexts = WeakKeyDictionary()
+    contexts[task] = ctx
+    return ctx
 
 
 @contextmanager
@@ -235,7 +234,6 @@ def isolated_call_context(isolate=True):
 def __patch():
     # Hook us into the sys module
     sys.get_call_context = _get_call_context
-    sys.set_call_context = _set_call_context
 
     # Thread Support
     thread_init = threading.Thread.__init__
@@ -246,8 +244,8 @@ def __patch():
         return thread_init(self, *args, **kwargs)
 
     def better_thread_bootstrap(self):
-        new_call_context(name=self.name, parent=self.__outer_call_ctx,
-                         set=True)
+        set_thread_call_context(new_call_context(
+            name=self.name, parent=self.__outer_call_ctx))
         return thread_bootstrap(self)
 
     threading.Thread.__init__ = better_thread_init
@@ -260,7 +258,7 @@ def __patch():
         ctx = _get_call_context()
         task = ensure_future(coro_or_future, loop=loop)
         new_ctx = new_call_context(name='Task-0x%x' % id(task), parent=ctx)
-        _set_task_call_context(task, new_ctx)
+        set_task_call_context(task, new_ctx)
         return task
 
     asyncio.ensure_future = better_ensure_future
