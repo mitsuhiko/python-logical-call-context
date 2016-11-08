@@ -64,7 +64,7 @@ class CallContext(object):
     def __init__(self, name, parent=None):
         logical_key = None
         if parent is not None:
-            data = parent.__data.copy()
+            data = parent._data.copy()
             if not parent.isolates:
                 logical_key = parent.logical_key
         else:
@@ -76,11 +76,14 @@ class CallContext(object):
         self.key = CallContextKey(name)
         self.logical_key = logical_key
         self.isolates = False
-        self.__data = data
-        self.__backup = None
+        self._data = data
+        self._backup = None
 
     def __repr__(self):
-        return '<CallContext key=%r id=0x%x>' % (self.key, id(self))
+        return '<CallContext name=%r id=0x%x>' % (
+            self.key.name,
+            id(self),
+        )
 
     def __eq__(self, other):
         return self.__class__ is other.__class__ and \
@@ -95,7 +98,7 @@ class CallContext(object):
         returned instead.
         """
         try:
-            cd = self.__data.get(name)
+            cd = self._data.get(name)
             if cd is None:
                 raise KeyError(name)
 
@@ -124,26 +127,25 @@ class CallContext(object):
         will not travel to a context belonging to a different logical call
         context.
         """
-        if self.__backup is not None and name not in self.__backup:
-            self.__backup[name] = self.__data.get(name)
-        self.__data[name] = _ContextData(value, self.key, self.logical_key,
+        if self._backup is not None and name not in self._backup:
+            self._backup[name] = self._data.get(name)
+        self._data[name] = _ContextData(value, self.key, self.logical_key,
                                          sync=sync, local=local)
 
     def unset_data(self, name):
         """Deletes a key"""
-        self.__data[name] = None
+        self._data[name] = None
 
     @contextmanager
     def nested(self):
         """Helper context manager to """
-        backup = self.__backup
-        self.__backup = {}
+        backup = self._backup
+        self._backup = {}
         try:
             yield
         finally:
-            print(self.__backup, self.__data)
-            self.__data.update(self.__backup)
-            self.__backup = backup
+            self._data.update(self._backup)
+            self._backup = backup
 
 
 def new_call_context(name=None, parent=None, set=False):

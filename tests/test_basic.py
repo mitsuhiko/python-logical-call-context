@@ -70,13 +70,14 @@ def test_async():
 
     rv = []
 
-    async def x():
+    async def x(val):
         ctx = sys.get_call_context()
         rv.append(ctx.get_data('__locale__'))
-        ctx.set_data('__locale__', 'de_DE')
+        ctx.set_data('__locale__', val)
         rv.append(ctx.get_data('__locale__'))
 
-    asyncio.get_event_loop().run_until_complete(x())
+    asyncio.get_event_loop().run_until_complete(x('de_DE'))
+    asyncio.get_event_loop().run_until_complete(x('fr_FR'))
     rv.append(ctx.get_data('__locale__'))
 
-    assert rv == ['en_US', 'de_DE', 'en_US']
+    assert rv == ['en_US', 'de_DE', 'en_US', 'fr_FR', 'en_US']
