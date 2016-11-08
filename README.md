@@ -6,7 +6,7 @@ examples assume it's there and the code monkeypatches on import.
 
 Examples::
 
-```
+```python
 from contextlib import get_call_context
 
 # Returns the current call context
@@ -33,7 +33,7 @@ def get_my_context(create=False):
 
 Other things patched:
 
-```
+```python
 from threading import get_thread_call_context
 from asyncio import get_task_call_context
 ```
