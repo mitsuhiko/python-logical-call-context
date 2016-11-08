@@ -60,6 +60,10 @@ ctx.logical_key
 
 # Return the current concurrency key (a hashable object)
 ctx.key
+
+# Nest the context (throws away local modifications later)
+with ctx.nested():
+    ...
 ```
 
 Other things patched:
