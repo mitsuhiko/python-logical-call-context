@@ -4,7 +4,6 @@ import asyncio
 import _thread
 import threading
 
-from weakref import WeakKeyDictionary
 from contextlib import contextmanager
 from collections import MutableMapping
 from weakref import ref as weakref
@@ -157,7 +156,7 @@ def new_call_context(name=None, parent=None):
     return CallContext(name, parent)
 
 
-def _get_call_context():
+def get_call_context():
     """Returns the current call context."""
     try:
         loop = asyncio.get_event_loop()
@@ -194,16 +193,6 @@ def set_thread_call_context(ctx):
     return ctx
 
 
-def set_task_call_context(task, ctx):
-    """Binds the given call context to the current asyncio task."""
-    try:
-        contexts = _local.asyncio_contexts
-    except AttributeError:
-        _local.asyncio_contexts = contexts = WeakKeyDictionary()
-    contexts[task] = ctx
-    return ctx
-
-
 @contextmanager
 def isolated_call_context(isolate=True):
     """Context manager that temporarily isolates the call context.  This means
@@ -231,9 +220,12 @@ def isolated_call_context(isolate=True):
         ctx.isolates = old
 
 
-def __patch():
+def patch_sys():
     # Hook us into the sys module
-    sys.get_call_context = _get_call_context
+    sys.get_call_context = get_call_context
+
+
+def patch_threads():
 
     # Thread Support
     thread_init = threading.Thread.__init__
@@ -250,20 +242,3 @@ def __patch():
 
     threading.Thread.__init__ = better_thread_init
     threading.Thread._bootstrap = better_thread_bootstrap
-
-    # asyncio support
-    ensure_future = asyncio.ensure_future
-
-    def better_ensure_future(coro_or_future, *, loop=None):
-        ctx = _get_call_context()
-        task = ensure_future(coro_or_future, loop=loop)
-        new_ctx = new_call_context(name='Task-0x%x' % id(task), parent=ctx)
-        set_task_call_context(task, new_ctx)
-        return task
-
-    asyncio.ensure_future = better_ensure_future
-    asyncio.tasks.ensure_future = better_ensure_future
-
-
-__patch()
-del __patch
