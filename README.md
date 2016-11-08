@@ -30,3 +30,10 @@ def get_my_context(create=False):
     bind_the_new_context(rv)
     return rv
 ```
+
+Other things patched:
+
+```
+from threading import get_thread_call_context
+from asyncio import get_task_call_context
+```

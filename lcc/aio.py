@@ -56,3 +56,4 @@ def patch_asyncio():
 
     asyncio.ensure_future = better_ensure_future
     asyncio.tasks.ensure_future = better_ensure_future
+    asyncio.get_task_call_context = get_task_call_context

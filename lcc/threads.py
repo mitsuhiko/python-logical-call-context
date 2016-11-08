@@ -36,3 +36,4 @@ def patch_threads():
 
     threading.Thread.__init__ = better_thread_init
     threading.Thread._bootstrap = better_thread_bootstrap
+    threading.get_thread_call_context = get_thread_call_context
