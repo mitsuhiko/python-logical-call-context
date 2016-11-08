@@ -3,13 +3,13 @@ import sys
 import asyncio
 import _thread
 import threading
+import contextlib
 
 from contextlib import contextmanager
 from collections import MutableMapping
 from weakref import ref as weakref
 
 
-_local = threading.local()
 _missing = object()
 
 
@@ -156,43 +156,6 @@ def new_call_context(name=None, parent=None):
     return CallContext(name, parent)
 
 
-def get_call_context():
-    """Returns the current call context."""
-    try:
-        loop = asyncio.get_event_loop()
-    except (AssertionError, RuntimeError):
-        pass
-    else:
-        task = asyncio.Task.current_task(loop=loop)
-
-        # If we have a task we look up the correct context 
-        if task is not None:
-            try:
-                ctx = _local.asyncio_contexts[task]
-            except (AttributeError, LookupError):
-                ctx = None
-            if ctx is not None:
-                return ctx
-            try:
-                parent = _local.context
-            except AttributeError:
-                parent = None
-            ctx = new_call_context(parent=parent)
-            return set_task_call_context(task, ctx)
-
-    # Final fallback, make a new context and bind it to the thread.
-    try:
-        return _local.context
-    except AttributeError:
-        return set_thread_call_context(new_call_context())
-
-
-def set_thread_call_context(ctx):
-    """Binds the given call context to the current thread."""
-    _local.context = ctx
-    return ctx
-
-
 @contextmanager
 def isolated_call_context(isolate=True):
     """Context manager that temporarily isolates the call context.  This means
@@ -211,7 +174,7 @@ def isolated_call_context(isolate=True):
         with contextlib.isolated_call_context():
             ...
     """
-    ctx = sys.get_call_context()
+    ctx = contextlib.get_call_context()
     old = ctx.isolates
     ctx.isolates = isolate
     try:
@@ -220,25 +183,9 @@ def isolated_call_context(isolate=True):
         ctx.isolates = old
 
 
-def patch_sys():
-    # Hook us into the sys module
-    sys.get_call_context = get_call_context
-
-
-def patch_threads():
-
-    # Thread Support
-    thread_init = threading.Thread.__init__
-    thread_bootstrap = threading.Thread._bootstrap
-
-    def better_thread_init(self, *args, **kwargs):
-        self.__outer_call_ctx = sys.get_call_context()
-        return thread_init(self, *args, **kwargs)
-
-    def better_thread_bootstrap(self):
-        set_thread_call_context(new_call_context(
-            name=self.name, parent=self.__outer_call_ctx))
-        return thread_bootstrap(self)
-
-    threading.Thread.__init__ = better_thread_init
-    threading.Thread._bootstrap = better_thread_bootstrap
+def patch_contextlib():
+    """Injects us to where we expect to live."""
+    from .unified import get_call_context
+    contextlib.get_call_context = get_call_context
+    contextlib.new_call_context = new_call_context
+    contextlib.isolated_call_context = isolated_call_context
